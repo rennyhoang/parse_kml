@@ -3,6 +3,20 @@ from fastkml import geometry as kml_geometry
 from shapely import geometry as shapely_geometry
 import pickle
 import os.path
+import numpy as np
+import h5py
+
+
+def latlon2yx(lon, lat):
+    # 33.50 34.4 -118.75 -117.25
+    lat0 = 34.4
+    lon0 = -118.75
+    step = 0.02277778
+
+    y = -int((lat - lat0) / step)
+    x = int((lon - lon0) / step)
+
+    return x, y
 
 
 # load polygon and check if point inside
@@ -49,7 +63,7 @@ def create_basin_dict(file_name):
 # create polygon for basins
 def parse_polygon(basin_dict, placemark):
     if isinstance(placemark.geometry, kml_geometry.Polygon):
-        coordinates = placemark.geometry.exterior.coords
+        coordinates = [latlon2yx(x[0], x[1]) for x in placemark.geometry.exterior.coords]
         polygon = shapely_geometry.Polygon(shapely_geometry.LineString(coordinates))
         schema = list(list(placemark.extended_data.elements)[0].data)
         basin_name = [x['value'] for x in schema if x['name'] == "Basin_Name"][0]
@@ -58,13 +72,25 @@ def parse_polygon(basin_dict, placemark):
         basin_dict[name] = polygon
 
 
+def create_mask(x, y):
+    my_mask = np.ones((x, y))
+    for i in range(x):
+        for j in range(y):
+            if not in_polygon((j, i)):
+                my_mask[i][j] = np.nan
+
+    h5f = h5py.File('my_mask.h5', 'w')
+    h5f.create_dataset('mask', data=my_mask)
+    h5f.close()
+
+
 def main():
     if not os.path.isfile('basins.pickle') or not os.path.isfile('polygon.pickle'):
         basin_dict = create_basin_dict('input.kml')
         save_to_file('basins.pickle', basin_dict)
         save_to_file('polygon.pickle', basin_dict['SAN GABRIEL VALLEY: SAN GABRIEL VALLEY'])
-    print(in_polygon((1, 1)))
-    print(in_polygon((-117.95, 34.078)))
+
+    create_mask(20, 50)
 
 
 if __name__ == '__main__':
