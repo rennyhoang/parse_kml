@@ -2,9 +2,11 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.h5
 
 # C extensions
 *.so
+*.pickle
 
 # Distribution / packaging
 .Python
