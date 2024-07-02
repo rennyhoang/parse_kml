@@ -11,7 +11,7 @@ def latlon2yx(lon, lat):
     # 33.50 34.4 -118.75 -117.25
     lat0 = 34.4
     lon0 = -118.75
-    step = 0.02277778
+    step = 0.00277778
 
     y = -int((lat - lat0) / step)
     x = int((lon - lon0) / step)
@@ -90,7 +90,7 @@ def main():
         save_to_file('basins.pickle', basin_dict)
         save_to_file('polygon.pickle', basin_dict['SAN GABRIEL VALLEY: SAN GABRIEL VALLEY'])
 
-    create_mask(20, 50)
+    create_mask(324, 540)
 
 
 if __name__ == '__main__':
