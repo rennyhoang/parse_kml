@@ -1,10 +1,11 @@
-from fastkml import kml
-from fastkml import geometry as kml_geometry
-from shapely import geometry as shapely_geometry
-import pickle
 import os.path
-import numpy as np
+import pickle
+
 import h5py
+import numpy as np
+from fastkml import geometry as kml_geometry
+from fastkml import kml
+from shapely import geometry as shapely_geometry
 
 
 def latlon2yx(lon, lat):
@@ -21,8 +22,8 @@ def latlon2yx(lon, lat):
 
 # load polygon and check if point inside
 def in_polygon(coord):
-    """ return a bool for whether or not coord in polygon """
-    with open('polygon.pickle', 'rb') as handle:
+    """return a bool for whether or not coord in polygon"""
+    with open("polygon.pickle", "rb") as handle:
         polygon = pickle.load(handle)
     point = shapely_geometry.Point(coord)
     return polygon.contains(point)
@@ -30,13 +31,13 @@ def in_polygon(coord):
 
 # for saving basins/polygon to file
 def save_to_file(file_name, saved_object):
-    with open(file_name, 'wb') as handle:
+    with open(file_name, "wb") as handle:
         pickle.dump(saved_object, handle, protocol=-1)
 
 
 # parse the KML file to get basins
 def create_basin_dict(file_name):
-    """ return a dictionary mapping names -> polygons """
+    """return a dictionary mapping names -> polygons"""
     basin_dict = {}
 
     # recursively search through KML for placemarks
@@ -49,11 +50,11 @@ def create_basin_dict(file_name):
             elif isinstance(feature, kml.Folder) or isinstance(feature, kml.Document):
                 parse_placemarks(list(feature.features()))
 
-    with open(file_name, 'r') as file:
+    with open(file_name, "r") as file:
         file_content = file.read()
 
     k = kml.KML()
-    k.from_string(file_content.encode('utf-8'))
+    k.from_string(file_content.encode("utf-8"))
     document = list(k.features())
     parse_placemarks(document)
 
@@ -63,11 +64,17 @@ def create_basin_dict(file_name):
 # create polygon for basins
 def parse_polygon(basin_dict, placemark):
     if isinstance(placemark.geometry, kml_geometry.Polygon):
-        coordinates = [latlon2yx(x[0], x[1]) for x in placemark.geometry.exterior.coords]
-        polygon = shapely_geometry.Polygon(shapely_geometry.LineString(coordinates))
+        # coordinates = [latlon2yx(x[0], x[1]) for x in placemark.geometry.exterior.coords]
+        coordinates = [[x[0], x[1]]
+                       for x in placemark.geometry.exterior.coords]
+        polygon = shapely_geometry.Polygon(
+            shapely_geometry.LineString(coordinates))
         schema = list(list(placemark.extended_data.elements)[0].data)
-        basin_name = [x['value'] for x in schema if x['name'] == "Basin_Name"][0]
-        subbasin_name = [x['value'] for x in schema if x['name'] == "Basin_Subbasin_Name"][0]
+        basin_name = [x["value"]
+                      for x in schema if x["name"] == "Basin_Name"][0]
+        subbasin_name = [
+            x["value"] for x in schema if x["name"] == "Basin_Subbasin_Name"
+        ][0]
         name = basin_name + ": " + subbasin_name
         basin_dict[name] = polygon
 
@@ -79,19 +86,26 @@ def create_mask(x, y):
             if not in_polygon((j, i)):
                 my_mask[i][j] = np.nan
 
-    h5f = h5py.File('my_mask.h5', 'w')
-    h5f.create_dataset('mask', data=my_mask)
+    h5f = h5py.File("my_mask.h5", "w")
+    h5f.create_dataset("mask", data=my_mask)
     h5f.close()
 
 
 def main():
-    if not os.path.isfile('basins.pickle') or not os.path.isfile('polygon.pickle'):
-        basin_dict = create_basin_dict('input.kml')
-        save_to_file('basins.pickle', basin_dict)
-        save_to_file('polygon.pickle', basin_dict['SAN GABRIEL VALLEY: SAN GABRIEL VALLEY'])
+    if not os.path.isfile("basins.pickle") or not os.path.isfile("polygon.pickle"):
+        basin_dict = create_basin_dict("input.kml")
+        save_to_file("basins.pickle", basin_dict)
+        save_to_file(
+            "polygon.pickle", basin_dict["SAN GABRIEL VALLEY: SAN GABRIEL VALLEY"]
+        )
+
+    with open("polygon.pickle", "rb") as handle:
+        polygon = pickle.load(handle)
+    print(polygon)
+    print(polygon.area)
 
     create_mask(324, 540)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
